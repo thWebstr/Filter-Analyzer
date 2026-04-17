@@ -330,6 +330,84 @@ def get_hjw_magnitude_expr(ftype, order, wc1, mag_at_wc, db_at_wc, wc2=None):
     return base
 
 
+def poly_magnitude_sq_coeffs(coeffs):
+    """
+    Given H(s) polynomial coefficients [c0, ..., cn] (c0*s^n + ... + cn),
+    return coefficients of |P(jω)|² as a numpy array in ω (highest power first).
+    """
+    coeffs = np.real(coeffs)
+    n = len(coeffs) - 1
+    re, im = {}, {}
+    for i, c in enumerate(coeffs):
+        pw = n - i
+        j_pw = pw % 4
+        if   j_pw == 0: re[pw] = re.get(pw, 0.0) + c
+        elif j_pw == 1: im[pw] = im.get(pw, 0.0) + c
+        elif j_pw == 2: re[pw] = re.get(pw, 0.0) - c
+        elif j_pw == 3: im[pw] = im.get(pw, 0.0) - c
+
+    def dict_to_poly(d):
+        if not d:
+            return np.poly1d([0.0])
+        max_p = max(d) + 1
+        arr = np.zeros(max_p)
+        for p, c in d.items():
+            arr[max_p - 1 - p] = c
+        return np.poly1d(arr)
+
+    re_p = dict_to_poly(re)
+    im_p = dict_to_poly(im)
+    return (re_p * re_p + im_p * im_p).coeffs
+
+
+def poly_w_str(coeffs, var="w"):
+    """Format poly-in-ω coefficient array as a human-readable string."""
+    coeffs = np.real(coeffs)
+    first = next((i for i, c in enumerate(coeffs) if abs(c) > 1e-8), len(coeffs))
+    coeffs = coeffs[first:]
+    if len(coeffs) == 0:
+        return "0"
+    n = len(coeffs) - 1
+    terms = []
+    for i, c in enumerate(coeffs):
+        pw = n - i
+        if abs(c) < 1e-8:
+            continue
+        c_abs = f"{abs(c):.4g}"
+        if pw == 0:
+            term = c_abs
+        elif pw == 1:
+            term = var if abs(abs(c) - 1) < 1e-8 else f"{c_abs}*{var}"
+        else:
+            term = f"{var}^{pw}" if abs(abs(c) - 1) < 1e-8 else f"{c_abs}*{var}^{pw}"
+        terms.append(("+" if c >= 0 else "-", term))
+    if not terms:
+        return "0"
+    result = ("-" if terms[0][0] == "-" else "") + terms[0][1]
+    for sign, term in terms[1:]:
+        result += f" {sign} {term}"
+    return result
+
+
+def build_magnitude_formula(b, a, var="w"):
+    """
+    Build a copyable |H(jω)| expression from filter b/a coefficients.
+    Example: order-1 Butterworth LPF wc=4 → '|H(jw)| = 4 / (w^2 + 16)^(1/2)'
+    """
+    sq_num = poly_magnitude_sq_coeffs(b)
+    sq_den = poly_magnitude_sq_coeffs(a)
+
+    num_trimmed = np.trim_zeros(np.real(sq_num), "f")
+    if len(num_trimmed) <= 1:
+        const = num_trimmed[0] if len(num_trimmed) == 1 else 0.0
+        num_str = f"{np.sqrt(abs(const)):.4g}"
+    else:
+        num_str = f"({poly_w_str(sq_num, var)})^(1/2)"
+
+    den_str = f"({poly_w_str(sq_den, var)})^(1/2)"
+    return f"|H(j{var})| = {num_str} / {den_str}"
+
+
 # ─── FREQUENCY RESPONSE ───────────────────────────────────────────────────────
 
 def compute_response(z, p, k, w_range):
@@ -528,22 +606,33 @@ cols = st.columns(min(len(results), 3))
 for idx, res in enumerate(results):
     col = cols[idx % len(cols)]
     with col:
-        b_str = poly_to_str(res["b"])
-        a_str = poly_to_str(res["a"])
         mag_at_wc = np.interp(wc1, res["w"], res["mag"])
         db_at_wc = 20 * np.log10(max(mag_at_wc, 1e-12))
-        hjw_str = get_hjw_magnitude_expr(ftype, res["order"], wc1, mag_at_wc, db_at_wc, wc2)
+        hw_expr = build_magnitude_formula(res["b"], res["a"])
 
         st.markdown(f"""
         <div class="hs-card" style="border-left: 3px solid {res['color']}">
             <div class="hs-order">ORDER {res['order']} · {method}{' ' + cheby_type if cheby_type else ''}</div>
-            <div class="hs-formula">
-                H(ω) = <br>
-                &nbsp;&nbsp;({b_str})<br>
-                &nbsp;&nbsp;────────────────<br>
-                &nbsp;&nbsp;({a_str})
+            <div style="
+                font-family: 'Courier New', monospace;
+                font-size: 0.88rem;
+                background: {C['bg_deep']};
+                color: {C['text']};
+                border: 1px solid {C['border']};
+                border-radius: 8px;
+                padding: 10px 14px;
+                margin: 10px 0 4px 0;
+                user-select: all;
+                cursor: text;
+                letter-spacing: 0.02em;
+            ">{hw_expr}</div>
+            <div style="font-size:0.63rem;color:{C['text_muted']};margin-bottom:8px;
+                        letter-spacing:0.04em;">
+                ↑ Click to select all &nbsp;·&nbsp; substitute <em>w</em> with your ω
             </div>
-            <div class="hs-mag">|H(jωc)| = {mag_at_wc:.5f} &nbsp;|&nbsp; {db_at_wc:.2f} dB</div>
+            <div class="hs-mag">At ωc = {wc1:.1f} rad/s &nbsp;·&nbsp;
+                |H(jωc)| = {mag_at_wc:.5f} &nbsp;|&nbsp; {db_at_wc:.2f} dB
+            </div>
         </div>
         """, unsafe_allow_html=True)
 

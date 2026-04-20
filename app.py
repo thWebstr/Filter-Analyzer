@@ -617,7 +617,7 @@ for idx, res in enumerate(results):
                 font-family: 'Courier New', monospace;
                 font-size: 0.88rem;
                 background: {C['bg_deep']};
-                color: {C['text']};
+                color: {res['color']};
                 border: 1px solid {C['border']};
                 border-radius: 8px;
                 padding: 10px 14px;

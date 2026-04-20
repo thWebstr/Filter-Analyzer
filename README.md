@@ -22,7 +22,7 @@ A professional, interactive web application built with **Streamlit**, **SciPy**,
 
 2. **Install the dependencies**
    ```bash
-   pip install -r Requirements.txt
+   pip install -r requirements.txt
    ```
 
 3. **Launch the application**

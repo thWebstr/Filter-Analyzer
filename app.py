@@ -25,7 +25,7 @@ if THEME == "dark":
     C = dict(
         bg_main="#010409",   bg_surface="#0d1117",  bg_deep="#161b22",
         border="#21262d",    border_mid="#30363d",
-        text="#e6edf3",      text_muted="#a4b1be",
+        text="#000000",      text_muted="#a4b1be",
         accent="#58a6ff",    accent_bg="#1c2d4b",   accent_border="#1f4068",
         warn="#f0883e",
         fig_bg="#0d1117",    plot_bg="#0d1117",
@@ -36,7 +36,7 @@ else:
     C = dict(
         bg_main="#ffffff",   bg_surface="#f6f8fa",  bg_deep="#eaeef2",
         border="#d0d7de",    border_mid="#8c959f",
-        text="#1c2128",      text_muted="#3a424a",
+        text="#000000",      text_muted="#3a424a",
         accent="#0969da",    accent_bg="#ddf4ff",   accent_border="#54aeff",
         warn="#9a6700",
         fig_bg="#ffffff",    plot_bg="#f6f8fa",

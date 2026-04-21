@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+import plotly.graph_objects as go
 from scipy import signal
 import pandas as pd
 
@@ -274,6 +273,7 @@ FILTER_LABELS = {"LPF": "Low-Pass", "HPF": "High-Pass", "BPF": "Band-Pass", "BSF
 
 # ─── TRANSFER FUNCTION HELPERS ────────────────────────────────────────────────
 
+@st.cache_data
 def get_filter_system(method, cheby_type, ftype, order, wc1, wc2, ripple_db=1.0, rs_db=60.0):
     """Returns scipy lti system for the given parameters."""
     btype_map = {"LPF": "low", "HPF": "high", "BPF": "bandpass", "BSF": "bandstop"}
@@ -410,6 +410,7 @@ def build_magnitude_formula(b, a, var="w"):
 
 # ─── FREQUENCY RESPONSE ───────────────────────────────────────────────────────
 
+@st.cache_data
 def compute_response(z, p, k, w_range):
     """Uses ZPK form for numerical stability at high orders."""
     w, H = signal.freqs_zpk(z, p, k, worN=w_range)
@@ -420,53 +421,55 @@ def compute_response(z, p, k, w_range):
 
 # ─── MATPLOTLIB FIGURE ────────────────────────────────────────────────────────
 
-def plot_magnitude(results, ftype, wc1, wc2, log_scale, C):
-    """Engineering-style matplotlib magnitude plot (theme-aware)."""
-    fig, ax = plt.subplots(figsize=(10, 8), facecolor=C["fig_bg"])
-    ax.set_facecolor(C["plot_bg"])
-    ax.set_box_aspect(1)  # square grid cells
-
-    for spine in ax.spines.values():
-        spine.set_color(C["spine"])
-    ax.tick_params(colors=C["tick"], labelsize=8)
-    ax.xaxis.label.set_color(C["tick"])
-    ax.yaxis.label.set_color(C["tick"])
-    ax.title.set_color(C["text"])
+def plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_db, log_scale, C):
+    """Engineering-style interactive Plotly magnitude plot."""
+    fig = go.Figure()
 
     for res in results:
-        ax.plot(res["w"], res["mag_db"], color=res["color"],
-                linewidth=1.8, label=f"Order {res['order']}")
+        fig.add_trace(go.Scatter(
+            x=res["w"], y=res["mag_db"], mode='lines', 
+            line=dict(color=res["color"], width=2.5), 
+            name=f"Order {res['order']}"
+        ))
 
-    # -3 dB reference
-    ax.axhline(y=-3, color=C["warn"], linewidth=1, linestyle="--", alpha=0.7, label="-3 dB")
+    # Error Band Visuals
+    if method == "Chebyshev":
+        if cheby_type == "Type I":
+            fig.add_hline(y=-ripple_db, line_dash="dash", line_color=C["warn"], opacity=0.8, annotation_text=f"-{ripple_db}dB Ripple", annotation_position="bottom right")
+        elif cheby_type == "Type II":
+            fig.add_hline(y=-rs_db, line_dash="dash", line_color=C["warn"], opacity=0.8, annotation_text=f"-{rs_db}dB Stopband", annotation_position="top right")
 
-    # cutoff lines — get y-limits after data is plotted
-    ax.autoscale()
-    y_bottom = ax.get_ylim()[0]
-    label_y = y_bottom + 2 if y_bottom > -200 else -58
+    fig.add_hline(y=-3, line_dash="dot", line_color=C["text_muted"], opacity=0.7, annotation_text="-3 dB", annotation_position="bottom left")
 
-    ax.axvline(x=wc1, color=C["warn"], linewidth=0.9, linestyle=":", alpha=0.7)
-    ax.text(wc1 * 1.05, label_y, f"ωc={wc1:.2g}", color=C["warn"], fontsize=7.5)
-    if wc2 is not None:
-        ax.axvline(x=wc2, color=C["warn"], linewidth=0.9, linestyle=":", alpha=0.7)
-        ax.text(wc2 * 1.05, label_y, f"ωc={wc2:.2g}", color=C["warn"], fontsize=7.5)
+    if wc1:
+        fig.add_vline(x=wc1, line_dash="dot", line_color=C["warn"], opacity=0.7, annotation_text=f"ωc={wc1}")
+    if wc2:
+        fig.add_vline(x=wc2, line_dash="dot", line_color=C["warn"], opacity=0.7, annotation_text=f"ωc={wc2}")
 
-    if log_scale:
-        ax.set_xscale("log")
-
-    ax.set_xlabel("ω  (rad/s)", fontsize=9)
-    ax.set_ylabel("Magnitude  |H(jω)|  (dB)", fontsize=9)
-    ax.set_title(f"{FILTER_LABELS[ftype]} Filter — Magnitude Response",
-                 fontsize=10, fontweight="bold", pad=10)
-
-    ax.grid(True, which="major", color=C["grid_maj"], linewidth=0.8)
-    ax.grid(True, which="minor", color=C["grid_min"], linewidth=0.4)
-    ax.minorticks_on()
-
-    ax.legend(fontsize=8, facecolor=C["fig_bg"], edgecolor=C["spine"],
-              labelcolor=C["text"], loc="upper right")
-
-    fig.tight_layout(pad=1.5)
+    fig.update_layout(
+        title=f"{FILTER_LABELS[ftype]} Filter — Magnitude Response",
+        xaxis_title="ω  (rad/s)",
+        yaxis_title="Magnitude  |H(jω)|  (dB)",
+        paper_bgcolor=C["fig_bg"],
+        plot_bgcolor=C["plot_bg"],
+        font=dict(color=C["text"], family="Plus Jakarta Sans"),
+        xaxis=dict(
+            type="log" if log_scale else "linear",
+            gridcolor=C["grid_maj"], minor=dict(gridcolor=C["grid_min"], showgrid=True), 
+            showgrid=True, gridwidth=1, zeroline=False
+        ),
+        yaxis=dict(
+            gridcolor=C["grid_maj"], minor=dict(gridcolor=C["grid_min"], showgrid=True), 
+            showgrid=True, gridwidth=1, zeroline=False
+        ),
+        margin=dict(l=60, r=40, t=80, b=60),
+        legend=dict(
+            bgcolor=C["fig_bg"], bordercolor=C["border"], borderwidth=1,
+            x=0.99, y=0.99, xanchor="right", yanchor="top"
+        ),
+        hovermode="x unified",
+        height=650
+    )
     return fig
 
 
@@ -640,8 +643,8 @@ for idx, res in enumerate(results):
 
 st.markdown('<div class="section-header">② Magnitude Response — All Orders Overlaid</div>', unsafe_allow_html=True)
 
-fig_mag = plot_magnitude(results, ftype, wc1, wc2, log_x, C)
-st.pyplot(fig_mag, use_container_width=True)
+fig_mag = plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_db, log_x, C)
+st.plotly_chart(fig_mag, use_container_width=True, config={"displayModeBar": True})
 
 # ─── SECTION 3: DATA TABLES ───────────────────────────────────────────────────
 
@@ -688,6 +691,6 @@ for tab, res in zip(tabs, results):
 st.markdown("---")
 st.markdown(
     f'<p style="color:{C["text_muted"]};font-size:0.72rem;text-align:center;">'
-    'Filter Analyzer · Butterworth &amp; Chebyshev I/II · Built with Streamlit + SciPy + Matplotlib'
+    'Filter Analyzer · Butterworth &amp; Chebyshev I/II · Built with Streamlit + SciPy + Plotly'
     '</p>', unsafe_allow_html=True
 )

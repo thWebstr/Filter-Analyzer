@@ -421,7 +421,7 @@ def compute_response(z, p, k, w_range):
 
 # ─── MATPLOTLIB FIGURE ────────────────────────────────────────────────────────
 
-def plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_db, log_scale, C):
+def plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_db, log_scale, C, height=650, lock_zoom=False):
     """Engineering-style interactive Plotly magnitude plot."""
     fig = go.Figure()
 
@@ -456,11 +456,13 @@ def plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_d
         xaxis=dict(
             type="log" if log_scale else "linear",
             gridcolor=C["grid_maj"], minor=dict(gridcolor=C["grid_min"], showgrid=True), 
-            showgrid=True, gridwidth=1, zeroline=False
+            showgrid=True, gridwidth=1, zeroline=False,
+            fixedrange=lock_zoom
         ),
         yaxis=dict(
             gridcolor=C["grid_maj"], minor=dict(gridcolor=C["grid_min"], showgrid=True), 
-            showgrid=True, gridwidth=1, zeroline=False
+            showgrid=True, gridwidth=1, zeroline=False,
+            fixedrange=lock_zoom
         ),
         margin=dict(l=60, r=40, t=80, b=60),
         legend=dict(
@@ -468,7 +470,8 @@ def plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_d
             x=0.99, y=0.99, xanchor="right", yanchor="top"
         ),
         hovermode="x unified",
-        height=650
+        dragmode=False if lock_zoom else "zoom",
+        height=height
     )
     return fig
 
@@ -486,6 +489,11 @@ with st.sidebar:
     if _tcol.button(_icon, key="theme_toggle", help=_tip, use_container_width=True):
         st.session_state.theme = "light" if THEME == "dark" else "dark"
         st.rerun()
+    st.markdown("---")
+    st.markdown("### 📊 Display Settings")
+    plot_height = st.slider("Plot Height", 300, 1000, 500, 25)
+    lock_zoom = st.toggle("Lock Zoom (Mobile Friendly)", value=True, help="Disable zooming/panning to make scrolling easier on mobile devices.")
+
     st.markdown("---")
 
     method = st.selectbox("Approximation Method", ["Butterworth", "Chebyshev"])
@@ -643,8 +651,8 @@ for idx, res in enumerate(results):
 
 st.markdown('<div class="section-header">② Magnitude Response — All Orders Overlaid</div>', unsafe_allow_html=True)
 
-fig_mag = plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_db, log_x, C)
-st.plotly_chart(fig_mag, use_container_width=True, config={"displayModeBar": True})
+fig_mag = plot_magnitude(results, ftype, method, cheby_type, wc1, wc2, ripple_db, rs_db, log_x, C, height=plot_height, lock_zoom=lock_zoom)
+st.plotly_chart(fig_mag, use_container_width=True, config={"displayModeBar": "hover" if not lock_zoom else False, "scrollZoom": False})
 
 # ─── SECTION 3: DATA TABLES ───────────────────────────────────────────────────
 

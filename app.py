@@ -272,6 +272,21 @@ html, body, [class*="css"] {{
     background: {C['accent']} !important;
     color: {'#ffffff' if THEME == 'light' else '#010409'} !important;
 }}
+
+/* ── Custom Hamburger Menu ────────────────────────────────────────────── */
+[data-testid="stSidebarCollapsedControl"] button svg {{
+    display: none !important;
+}}
+[data-testid="stSidebarCollapsedControl"] button::before {{
+    content: "\f0c9";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 1.3rem;
+    color: {C['accent']};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}}
 </style>
 """, unsafe_allow_html=True)
 

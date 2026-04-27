@@ -504,7 +504,7 @@ with st.sidebar:
         st.session_state.theme = "light" if THEME == "dark" else "dark"
         st.rerun()
     st.markdown("---")
-    st.markdown("### 📊 Display Settings")
+    st.markdown("### Display Settings")
     plot_height = st.slider("Plot Height", 300, 1000, 500, 25)
     lock_zoom = st.toggle("Lock Zoom (Mobile Friendly)", value=True, help="Disable zooming/panning to make scrolling easier on mobile devices.")
 

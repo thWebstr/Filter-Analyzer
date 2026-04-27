@@ -10,7 +10,7 @@ st.set_page_config(
     page_title="Filter Analyzer",
     page_icon="📡",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ─── THEME STATE ─────────────────────────────────────────────────────────────
@@ -59,7 +59,20 @@ html, body, [class*="css"] {{
     background: {C['bg_surface']};
     border-right: 1px solid {C['border']};
 }}
-[data-testid="stSidebar"] * {{ color: {C['text']} !important; }}
+/* Specific sidebar overrides for better contrast */
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] .stSelectbox p,
+[data-testid="stSidebar"] .stMultiSelect p {{
+    color: {C['text']} !important;
+}}
+[data-testid="stSidebar"] [data-baseweb="select"] * {{
+    color: {C['text']} !important;
+}}
+/* Ensure slider values and ticks are visible */
+[data-testid="stSidebar"] [data-testid="stSlider"] * {{
+    color: {C['text']} !important;
+}}
 
 .app-title {{
     font-family: 'Outfit', sans-serif;
@@ -157,11 +170,12 @@ html, body, [class*="css"] {{
     color: {"#3fb950" if THEME == "dark" else "#16a34a"} !important;
     font-weight: 600 !important;
 }}
-/* Stronger sidebar label contrast ────────────────────────────────────────── */
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .stSelectbox label,
+/* Sidebar text weight and contrast */
+[data-testid="stSidebar"] label {{
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+}}
 [data-testid="stSidebar"] p {{
-    color: {C['text']} !important;
     font-weight: 500 !important;
 }}
 
